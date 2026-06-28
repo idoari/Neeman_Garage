@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>טופס פניה למוסך נאמן מוטורס</title>
+<style>
+body{font-family:Arialsans-serif;background:#f4f6f8;padding:30px}
+.container{max-width:500px;margin:auto;background:#fff;padding:24px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+
+.plate-container {
+    display: inline-flex;
+    align-items: center;
+    border: 4px solid black;
+    border-radius: 10px; 
+    background: #FFD700;
+    overflow: hidden;
+}
+
+/* הפס הכחול */
+.blue-strip {
+    width: 70px;
+    height: 80px;
+    background: linear-gradient(#0038A8, #0050D0);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* דגל ישראל ב-CSS */
+.flag {
+    width: 26px;
+    height: 18px;
+    background: white;
+    position: relative;
+    border: 1px solid white;
+}
+
+.flag::before,
+.flag::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #0038A8;
+}
+
+.flag::before {
+    top: 3px;
+}
+
+.flag::after {
+    bottom: 3px;
+}
+
+/* מגן דוד פשוט */
+.flag span {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #0038A8;
+}
+
+/* שדה המספר */
+.plate-input {
+    width: 260px;
+    height: 80px;
+    border: none;
+    outline: none;
+    font-size: 32px;
+    text-align: center;
+    background: transparent;
+    font-weight: bold;
+    letter-spacing: 5px;
+}
+
+textarea {
+    font-size: 24px;
+}
+
+h1{margin-top:0;text-align:center}
+label{display:block;margin:12px 0 6px;font-weight:bold}
+input,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box}
+textarea{min-height:120px;resize:vertical}
+button{margin-top:16px;width:100%;padding:12px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
+button:hover{opacity:.95}
+.small{font-size:12px;color:#666;margin-top:10px;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>טופס פניה למוסך נאמן מוטורס</h1>
+<form action="https://formspree.io/f/xzdopvvq" method="post" >
+<label style="font-size: 24px;">שם מלא</label>
+<input type="text" style="font-size: 35px;" name="שם מלא" required>
+<label style="font-size: 24px;">מספר רכב</label>
+
+<div class="plate-container">
+
+    <!-- פס כחול -->
+    <div class="blue-strip">
+        <div class="flag">
+            <span>✡</span>
+        </div>
+        <div>IL</div>
+        <div>ישראל</div>
+    </div>
+
+    <!-- מספר רכב -->
+    <input 
+        type="text" 
+        class="plate-input"
+        maxlength="10"
+        oninput="formatPlate(this)"
+        placeholder="00-000-00"
+		required
+    >
+
+</div>
+
+
+<script>
+function formatPlate(input) {
+    let value = input.value.replace(/[^0-9]/g, '');
+
+    // הגבלת אורך
+    if (value.length > 8) {
+        value = value.slice(0, 8);
+    }
+
+    // עיצוב עם מקפים
+    if (value.length <= 7) {
+        // פורמט: 12-345-67
+        value = value.replace(/^(\d{0,2})(\d{0,3})(\d{0,2})$/, function(_, a, b, c) {
+            return [a, b, c].filter(Boolean).join('-');
+        });
+    } else {
+        // פורמט: 123-45-678
+        value = value.replace(/^(\d{0,3})(\d{0,2})(\d{0,3})$/, function(_, a, b, c) {
+            return [a, b, c].filter(Boolean).join('-');
+        });
+    }
+
+    input.value = value;
+}
+
+function formatphone(input) {
+    let value = input.value.replace(/[^0-9]/g, '');
+
+    // הגבלת אורך
+    if (value.length > 10) {
+        value = value.slice(0, 10);
+    }
+
+    // עיצוב עם מקפים
+    if (value.length > 3) {
+        // פורמט: 123-4563456
+        value = value.replace(/^(\d{0,3})(\d{0,3})(\d{0,4})$/, function(_, a, b,c) {
+            return [a, b,c].filter(Boolean).join('-');
+        });
+    } 
+
+    input.value = value;
+}
+</script>
+
+<label style="font-size: 24px;">טלפון</label>
+<input type="tel" style="font-size: 35px;" placeholder="000-0000000" oninput="formatphone(this)" name="טלפון" required>
+<label style="font-size: 24px;">תוכן פניה</label>
+<textarea rows="7" cols="50" style="font-size: 25pt"  name="תוכן פניה" required></textarea>
+<button type="submit">שליחה</button>
+</form>
+<p class="small">בלחיצה על שליחה ייפתח יישום המייל במכשיר לשליחת ההודעה.</p>
+</div>
+</body>
+</html>
+
