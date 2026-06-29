@@ -1,4 +1,4 @@
-no<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -46,14 +46,13 @@ no<!DOCTYPE html>
             pointer-events: none;
             box-sizing: border-box;
             border-style: solid;
-            /* יוצר אפקט חשוך מסביב למסגרת המיקוד */
             border-color: rgba(0, 0, 0, 0.6); 
         }
 
         /* מסגרת המיקוד של ה-OCR */
         .scan-box {
             position: absolute;
-            border: 3px solid #ffcc00; /* צהוב זוהר */
+            border: 3px solid #ffcc00;
             box-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
             border-radius: 8px;
             pointer-events: none;
@@ -105,6 +104,8 @@ no<!DOCTYPE html>
         .status {
             font-size: 14px;
             color: #aaa;
+            text-align: center;
+            padding: 0 10px;
         }
     </style>
 </head>
@@ -133,14 +134,11 @@ no<!DOCTYPE html>
         const statusText = document.getElementById('statusText');
         const hiddenCanvas = document.getElementById('hiddenCanvas');
 
-        // הגדרת טוקן של Plate Recognizer (החלף בטוקן שלך לביצועים קבועים)
         const API_TOKEN = "YOUR_API_TOKEN"; 
 
-        // מימדי תיבת הזיהוי (באחוזים מתוך המסך)
-        const boxWidthPct = 75;  // 75% מרוחב המסך
-        const boxHeightPct = 15; // 15% מגובה המסך
+        const boxWidthPct = 75;  
+        const boxHeightPct = 15; 
 
-        // פונקציה לחישוב ועדכון מיקום המסגרת
         function updateOverlayLayout() {
             const containerWidth = video.parentElement.clientWidth;
             const containerHeight = video.parentElement.clientHeight;
@@ -151,99 +149,126 @@ no<!DOCTYPE html>
             const boxLeft = (containerWidth - boxWidth) / 2;
             const boxTop = (containerHeight - boxHeight) / 2;
 
-            // עדכון מיקום הריבוע הצהוב
             scanBox.style.width = `${boxWidth}px`;
             scanBox.style.height = `${boxHeight}px`;
             scanBox.style.left = `${boxLeft}px`;
             scanBox.style.top = `${boxTop}px`;
 
-            // עדכון הגבולות של ה-Overlay הכהה ליצירת חיתוך ויזואלי
             overlay.style.borderWidth = `${boxTop}px ${boxLeft}px ${containerHeight - boxTop - boxHeight}px ${boxLeft}px`;
         }
 
-        // הפעלת מצלמה (תואם אנדרואיד ואייפון)
-        
-async function startCamera() {
-    try {
-        statusText.innerText = "מבקש גישה למצלמה...";
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: "environment",
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        });
-        video.srcObject = stream;
-        statusText.innerText = "המצלמה פעילה. מקם את לוח הרישוי בריבוע";
-        
-        video.onloadedmetadata = () => {
-            updateOverlayLayout();
-            window.addEventListener('resize', updateOverlayLayout);
-        };
-    } catch (err) {
-        console.error(err);
-        // השורה הזו תציג לך בדיוק מה הבעיה על המסך:
-        statusText.innerText = "שגיאה: " + err.name + " - " + err.message;
-    }
-}
-        // פונקציית חיתוך (Crop) וצילום
+        async function startCamera() {
+            try {
+                statusText.innerText = "מבקש גישה למצלמה...";
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+                statusText.innerText = "המצלמה פעילה. מקם את לוח הרישוי בריבוע";
+                
+                video.onloadedmetadata = () => {
+                    updateOverlayLayout();
+                    window.addEventListener('resize', updateOverlayLayout);
+                };
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = "שגיאה: " + err.name + " - " + err.message;
+            }
+        }
+
         function captureCrop() {
             const ctx = hiddenCanvas.getContext('2d');
-            
-            // מימדי הוידאו האמיתיים כפי שהמצלמה מייצרת
             const videoWidth = video.videoWidth;
             const videoHeight = video.videoHeight;
-
-            // מימדי האלמנט במסך
             const displayWidth = video.clientWidth;
             const displayHeight = video.clientHeight;
 
-            // יחסי המרה בין התצוגה במסך לרזולוציית הוידאו האמיתית
             const scaleX = videoWidth / displayWidth;
             const scaleY = videoHeight / displayHeight;
 
-            // מיקומי המסגרת על המסך
             const boxLeft = parseFloat(scanBox.style.left);
             const boxTop = parseFloat(scanBox.style.top);
             const boxWidth = parseFloat(scanBox.style.width);
             const boxHeight = parseFloat(scanBox.style.height);
 
-            // חישוב מיקומי החיתוך המדויקים על הפריים האמיתי
             const cropX = boxLeft * scaleX;
             const cropY = boxTop * scaleY;
             const cropW = boxWidth * scaleX;
             const cropH = boxHeight * scaleY;
 
-            // הגדרת גודל הקנבס הנסתר בדיוק לגודל החיתוך
             hiddenCanvas.width = cropW;
             hiddenCanvas.height = cropH;
 
-            // ביצוע החיתוך
             ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
             
-            // החזרת התמונה כ-Blob (קובץ) מוכן למשלוח ל-API
             return new Promise((resolve) => {
                 hiddenCanvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.90);
             });
         }
 
-        // פונקציית פירמוט וסינון מספר רכב ישראלי עם Regex
         function formatIsraeliLicensePlate(rawText) {
-            // ניקוי כל תו שאינו ספרה
             const cleanNumber = rawText.replace(/\D/g, '');
 
             if (cleanNumber.length === 7) {
-                // מבנה: 12-345-67
                 return `${cleanNumber.slice(0, 2)}-${cleanNumber.slice(2, 5)}-${cleanNumber.slice(5, 7)}`;
             } else if (cleanNumber.length === 8) {
-                // מבנה: 123-45-678
                 return `${cleanNumber.slice(0, 3)}-${cleanNumber.slice(3, 5)}-${cleanNumber.slice(5, 8)}`;
             }
-            
-            return null; // לא מספר ישראלי תקני
+            return null; 
         }
 
-        // שליחת התמונה ל-OCR
         async function processOCR() {
-            statusText.innerText = "מע
+            if (!video.srcObject) {
+                statusText.innerText = "המצלמה אינה פעילה עדיין.";
+                return;
+            }
+
+            statusText.innerText = "מעבד ומזהה...";
+            resultInput.value = "";
+            
+            const imageBlob = await captureCrop();
+            const formData = new FormData();
+            formData.append('upload', imageBlob, 'plate.jpg');
+            formData.append('regions', 'il'); 
+
+            try {
+                const response = await fetch('https://api.platerecognizer.com/v1/plate-reader/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': API_TOKEN === "YOUR_API_TOKEN" ? 'Token 1fba96be73bbbc54bc2792c6b4fcbe1ae6d43e5c' : `Token ${API_TOKEN}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const rawPlate = data.results[0].plate; 
+                    const formattedPlate = formatIsraeliLicensePlate(rawPlate);
+
+                    if (formattedPlate) {
+                        resultInput.value = formattedPlate;
+                        statusText.innerText = "הזיהוי הושלם בהצלחה!";
+                    } else {
+                        statusText.innerText = `זוהה מספר לא תקני (${rawPlate}), נסה שוב.`;
+                    }
+                } else {
+                    statusText.innerText = "לא נמצא לוח רישוי בפריים, נסה שוב.";
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "שגיאה בתקשורת עם שרת הזיהוי.";
+            }
+        }
+
+        snapBtn.addEventListener('click', processOCR);
+        window.addEventListener('DOMContentLoaded', startCamera);
+    </script>
+</body>
+</html>
