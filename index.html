@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סורק לוח רישוי מהיר</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* מיכל המצלמה וה-Overlay */
+        .camera-container {
+            position: relative;
+            width: 100vw;
+            height: 70vh;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* שכבת ה-Overlay (חצי שקופה) */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            box-sizing: border-box;
+            border-style: solid;
+            /* יוצר אפקט חשוך מסביב למסגרת המיקוד */
+            border-color: rgba(0, 0, 0, 0.6); 
+        }
+
+        /* מסגרת המיקוד של ה-OCR */
+        .scan-box {
+            position: absolute;
+            border: 3px solid #ffcc00; /* צהוב זוהר */
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* אזור התוצאות והבקרה */
+        .controls {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            background: #222;
+            height: 30vh;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            max-width: 300px;
+            padding: 12px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 2px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: black;
+            background-color: #ffcc00;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .status {
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="overlay" id="overlay"></div>
+        <div class="scan-box" id="scanBox"></div>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="resultInput" placeholder="מספר הרכב יופיע כאן" readonly>
+        <button id="snapBtn">סרוק מספר</button>
+        <div class="status" id="statusText">ממתין להפעלת מצלמה...</div>
+    </div>
+
+    <canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const scanBox = document.getElementById('scanBox');
+        const snapBtn = document.getElementById('snapBtn');
+        const resultInput = document.getElementById('resultInput');
+        const statusText = document.getElementById('statusText');
+        const hiddenCanvas = document.getElementById('hiddenCanvas');
+
+        // הגדרת טוקן של Plate Recognizer (החלף בטוקן שלך לביצועים קבועים)
+        const API_TOKEN = "YOUR_API_TOKEN"; 
+
+        // מימדי תיבת הזיהוי (באחוזים מתוך המסך)
+        const boxWidthPct = 75;  // 75% מרוחב המסך
+        const boxHeightPct = 15; // 15% מגובה המסך
+
+        // פונקציה לחישוב ועדכון מיקום המסגרת
+        function updateOverlayLayout() {
+            const containerWidth = video.parentElement.clientWidth;
+            const containerHeight = video.parentElement.clientHeight;
+
+            const boxWidth = (containerWidth * boxWidthPct) / 100;
+            const boxHeight = (containerHeight * boxHeightPct) / 100;
+
+            const boxLeft = (containerWidth - boxWidth) / 2;
+            const boxTop = (containerHeight - boxHeight) / 2;
+
+            // עדכון מיקום הריבוע הצהוב
+            scanBox.style.width = `${boxWidth}px`;
+            scanBox.style.height = `${boxHeight}px`;
+            scanBox.style.left = `${boxLeft}px`;
+            scanBox.style.top = `${boxTop}px`;
+
+            // עדכון הגבולות של ה-Overlay הכהה ליצירת חיתוך ויזואלי
+            overlay.style.borderWidth = `${boxTop}px ${boxLeft}px ${containerHeight - boxTop - boxHeight}px ${boxLeft}px`;
+        }
+
+        // הפעלת מצלמה (תואם אנדרואיד ואייפון)
+        async function startCamera() {
+            try {
+                statusText.innerText = "מבקש גישה למצלמה...";
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment", // מצלמה אחורית
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+                statusText.innerText = "המצלמה פעילה. מקם את לוח הרישוי בריבוע";
+                
+                // עדכון מימדי ה-overlay לאחר שהוידאו נטען
+                video.onloadedmetadata = () => {
+                    updateOverlayLayout();
+                    window.addEventListener('resize', updateOverlayLayout);
+                };
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = "שגיאה בגישה למצלמה. ודא שאתה ב-HTTPS ושנתת הרשאות.";
+            }
+        }
+
+        // פונקציית חיתוך (Crop) וצילום
+        function captureCrop() {
+            const ctx = hiddenCanvas.getContext('2d');
+            
+            // מימדי הוידאו האמיתיים כפי שהמצלמה מייצרת
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+
+            // מימדי האלמנט במסך
+            const displayWidth = video.clientWidth;
+            const displayHeight = video.clientHeight;
+
+            // יחסי המרה בין התצוגה במסך לרזולוציית הוידאו האמיתית
+            const scaleX = videoWidth / displayWidth;
+            const scaleY = videoHeight / displayHeight;
+
+            // מיקומי המסגרת על המסך
+            const boxLeft = parseFloat(scanBox.style.left);
+            const boxTop = parseFloat(scanBox.style.top);
+            const boxWidth = parseFloat(scanBox.style.width);
+            const boxHeight = parseFloat(scanBox.style.height);
+
+            // חישוב מיקומי החיתוך המדויקים על הפריים האמיתי
+            const cropX = boxLeft * scaleX;
+            const cropY = boxTop * scaleY;
+            const cropW = boxWidth * scaleX;
+            const cropH = boxHeight * scaleY;
+
+            // הגדרת גודל הקנבס הנסתר בדיוק לגודל החיתוך
+            hiddenCanvas.width = cropW;
+            hiddenCanvas.height = cropH;
+
+            // ביצוע החיתוך
+            ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+            
+            // החזרת התמונה כ-Blob (קובץ) מוכן למשלוח ל-API
+            return new Promise((resolve) => {
+                hiddenCanvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.90);
+            });
+        }
+
+        // פונקציית פירמוט וסינון מספר רכב ישראלי עם Regex
+        function formatIsraeliLicensePlate(rawText) {
+            // ניקוי כל תו שאינו ספרה
+            const cleanNumber = rawText.replace(/\D/g, '');
+
+            if (cleanNumber.length === 7) {
+                // מבנה: 12-345-67
+                return `${cleanNumber.slice(0, 2)}-${cleanNumber.slice(2, 5)}-${cleanNumber.slice(5, 7)}`;
+            } else if (cleanNumber.length === 8) {
+                // מבנה: 123-45-678
+                return `${cleanNumber.slice(0, 3)}-${cleanNumber.slice(3, 5)}-${cleanNumber.slice(5, 8)}`;
+            }
+            
+            return null; // לא מספר ישראלי תקני
+        }
+
+        // שליחת התמונה ל-OCR
+        async function processOCR() {
+            statusText.innerText = "מע
