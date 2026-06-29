@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+no<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -162,31 +162,31 @@
         }
 
         // הפעלת מצלמה (תואם אנדרואיד ואייפון)
-        async function startCamera() {
-            try {
-                statusText.innerText = "מבקש גישה למצלמה...";
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: "environment", // מצלמה אחורית
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                });
-                video.srcObject = stream;
-                statusText.innerText = "המצלמה פעילה. מקם את לוח הרישוי בריבוע";
-                
-                // עדכון מימדי ה-overlay לאחר שהוידאו נטען
-                video.onloadedmetadata = () => {
-                    updateOverlayLayout();
-                    window.addEventListener('resize', updateOverlayLayout);
-                };
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = "שגיאה בגישה למצלמה. ודא שאתה ב-HTTPS ושנתת הרשאות.";
-            }
-        }
-
+        
+async function startCamera() {
+    try {
+        statusText.innerText = "מבקש גישה למצלמה...";
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        });
+        video.srcObject = stream;
+        statusText.innerText = "המצלמה פעילה. מקם את לוח הרישוי בריבוע";
+        
+        video.onloadedmetadata = () => {
+            updateOverlayLayout();
+            window.addEventListener('resize', updateOverlayLayout);
+        };
+    } catch (err) {
+        console.error(err);
+        // השורה הזו תציג לך בדיוק מה הבעיה על המסך:
+        statusText.innerText = "שגיאה: " + err.name + " - " + err.message;
+    }
+}
         // פונקציית חיתוך (Crop) וצילום
         function captureCrop() {
             const ctx = hiddenCanvas.getContext('2d');
