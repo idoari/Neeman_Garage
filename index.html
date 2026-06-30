@@ -123,158 +123,190 @@
     <canvas id="hiddenCanvas" style="display:none;"></canvas>
 
     <script>
-        // וידאו ואלמנטים
-        const video = document.getElementById('video');
-        const overlay = document.getElementById('overlay');
-        const scanBox = document.getElementById('scanBox');
-        const snapBtn = document.getElementById('snapBtn');
-        const resultInput = document.getElementById('resultInput');
-        const statusText = document.getElementById('statusText');
-        const hiddenCanvas = document.getElementById('hiddenCanvas');
+                    // וידאו ואלמנטים
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const scanBox = document.getElementById('scanBox');
+const snapBtn = document.getElementById('snapBtn');
+const resultInput = document.getElementById('resultInput');
+const statusText = document.getElementById('statusText');
+const hiddenCanvas = document.getElementById('hiddenCanvas');
 
-        const API_TOKEN = "5644225f147e0835c15d2f6127676b324d6e5862"; 
-        const boxWidthPct = 75;  
-        const boxHeightPct = 15; 
+// *** שים כאן את הטוקן האישי שלך לפעולה חלקה ללא חסימות ***
+const API_TOKEN = "YOUR_API_TOKEN"; 
 
-        function updateOverlayLayout() {
-            const containerWidth = video.parentElement.clientWidth;
-            const containerHeight = video.parentElement.clientHeight;
+const boxWidthPct = 75;  
+const boxHeightPct = 15; 
 
-            const boxWidth = (containerWidth * boxWidthPct) / 100;
-            const boxHeight = (containerHeight * boxHeightPct) / 100;
+function updateOverlayLayout() {
+    const containerWidth = video.parentElement.clientWidth;
+    const containerHeight = video.parentElement.clientHeight;
 
-            const boxLeft = (containerWidth - boxWidth) / 2;
-            const boxTop = (containerHeight - boxHeight) / 2;
+    const boxWidth = (containerWidth * boxWidthPct) / 100;
+    const boxHeight = (containerHeight * boxHeightPct) / 100;
 
-            scanBox.style.width = `${boxWidth}px`;
-            scanBox.style.height = `${boxHeight}px`;
-            scanBox.style.left = `${boxLeft}px`;
-            scanBox.style.top = `${boxTop}px`;
+    const boxLeft = (containerWidth - boxWidth) / 2;
+    const boxTop = (containerHeight - boxHeight) / 2;
 
-            overlay.style.borderWidth = `${boxTop}px ${boxLeft}px ${containerHeight - boxTop - boxHeight}px ${boxLeft}px`;
-        }
+    scanBox.style.width = `${boxWidth}px`;
+    scanBox.style.height = `${boxHeight}px`;
+    scanBox.style.left = `${boxLeft}px`;
+    scanBox.style.top = `${boxTop}px`;
 
-        async function startCamera() {
-            try {
-                statusText.innerText = "מבקש גישה למצלמה (נא לאשר בדפדפן)...";
-                
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    statusText.innerText = "שגיאה: הדפדפן או הכתובת (HTTP) לא תומכים בגישה למצלמה.";
-                    return;
-                }
+    overlay.style.borderWidth = `${boxTop}px ${boxLeft}px ${containerHeight - boxTop - boxHeight}px ${boxLeft}px`;
+}
 
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: "environment",
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                });
-                
-                video.srcObject = stream;
-                statusText.innerText = "המצלמה פעילה! מקם את לוח הרישוי בריבוע הצהוב";
-                
-                video.onloadedmetadata = () => {
-                    updateOverlayLayout();
-                    window.addEventListener('resize', updateOverlayLayout);
-                };
-            } catch (err) {
-                console.error("Camera error:", err);
-                statusText.innerText = "שגיאה קריטית: " + err.name + " - " + err.message;
-            }
-        }
-
-        function captureCrop() {
-            const ctx = hiddenCanvas.getContext('2d');
-            const videoWidth = video.videoWidth;
-            const videoHeight = video.videoHeight;
-            const displayWidth = video.clientWidth;
-            const displayHeight = video.clientHeight;
-
-            const scaleX = videoWidth / displayWidth;
-            const scaleY = videoHeight / displayHeight;
-
-            const boxLeft = parseFloat(scanBox.style.left);
-            const boxTop = parseFloat(scanBox.style.top);
-            const boxWidth = parseFloat(scanBox.style.width);
-            const boxHeight = parseFloat(scanBox.style.height);
-
-            const cropX = boxLeft * scaleX;
-            const cropY = boxTop * scaleY;
-            const cropW = boxWidth * scaleX;
-            const cropH = boxHeight * scaleY;
-
-            hiddenCanvas.width = cropW;
-            hiddenCanvas.height = cropH;
-
-            ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-            
-            return new Promise((resolve) => {
-                hiddenCanvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.90);
-            });
-        }
-
-        function formatIsraeliLicensePlate(rawText) {
-            const cleanNumber = rawText.replace(/\D/g, '');
-
-            if (cleanNumber.length === 7) {
-                return `${cleanNumber.slice(0, 2)}-${cleanNumber.slice(2, 5)}-${cleanNumber.slice(5, 7)}`;
-            } else if (cleanNumber.length === 8) {
-                return `${cleanNumber.slice(0, 3)}-${cleanNumber.slice(3, 5)}-${cleanNumber.slice(5, 8)}`;
-            }
-            return null; 
-        }
-
-        async function processOCR() {
-            if (!video.srcObject) {
-                statusText.innerText = "לא ניתן לסרוק, המצלמה אינה פעילה.";
-                return;
-            }
-
-            statusText.innerText = "שולח תמונה לזיהוי מהיר...";
-            resultInput.value = "";
-            
-            const imageBlob = await captureCrop();
-            const formData = new FormData();
-            formData.append('upload', imageBlob, 'plate.jpg');
-            formData.append('regions', 'il'); 
-
-            try {
-                const response = await fetch('https://api.platerecognizer.com/v1/plate-reader/', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': API_TOKEN === "YOUR_API_TOKEN" ? 'Token 1fba96be73bbbc54bc2792c6b4fcbe1ae6d43e5c' : `Token ${API_TOKEN}`
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-                
-                if (data.results && data.results.length > 0) {
-                    const rawPlate = data.results[0].plate; 
-                    const formattedPlate = formatIsraeliLicensePlate(rawPlate);
-
-                    if (formattedPlate) {
-                        resultInput.value = formattedPlate;
-                        statusText.innerText = "הזיהוי הושלם בהצלחה!";
-                    } else {
-                        statusText.innerText = `זוהה מספר לא תקני (${rawPlate}), נסה שוב.`;
-                    }
-                } else {
-                    statusText.innerText = "לא נמצא לוח רישוי, ודא שהמספר ממלא את הריבוע הצהוב.";
-                }
-
-            } catch (error) {
-                console.error(error);
-                statusText.innerText = "שגיאה בתקשורת עם שרת הזיהוי.";
-            }
-        }
-
-        snapBtn.addEventListener('click', processOCR);
+async function startCamera() {
+    try {
+        statusText.innerText = "מבקש גישה למצלמה...";
         
-        // הפעלה מיידית ללא תנאי
-        startCamera();
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            statusText.innerText = "שגיאה: הדפדפן לא תומך במצלמה.";
+            return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        });
+        
+        video.srcObject = stream;
+        statusText.innerText = "המצלמה פעילה! מקם את לוח הרישוי בריבוע הצהוב";
+        
+        video.onloadedmetadata = () => {
+            updateOverlayLayout();
+            window.addEventListener('resize', updateOverlayLayout);
+        };
+    } catch (err) {
+        statusText.innerText = "שגיאה בקבלת וידאו: " + err.message;
+    }
+}
+
+function captureCrop() {
+    const ctx = hiddenCanvas.getContext('2d');
+    
+    // רזולוציית המקור של הוידאו
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    
+    // גודל הוידאו כפי שהוא מוצג בפועל על המסך
+    const displayWidth = video.clientWidth;
+    const displayHeight = video.clientHeight;
+
+    // חישוב פקטור ההתאמה (מטפל במצבי Cover/Contain)
+    const videoRatio = videoWidth / videoHeight;
+    const displayRatio = displayWidth / displayHeight;
+    
+    let actualWidth = displayWidth;
+    let actualHeight = displayHeight;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    if (videoRatio > displayRatio) {
+        actualWidth = displayHeight * videoRatio;
+        xOffset = (actualWidth - displayWidth) / 2;
+    } else {
+        actualHeight = displayWidth / videoRatio;
+        yOffset = (actualHeight - displayHeight) / 2;
+    }
+
+    const scale = videoWidth / actualWidth;
+
+    const boxLeft = parseFloat(scanBox.style.left) + xOffset;
+    const boxTop = parseFloat(scanBox.style.top) + yOffset;
+    const boxWidth = parseFloat(scanBox.style.width);
+    const boxHeight = parseFloat(scanBox.style.height);
+
+    const cropX = boxLeft * scale;
+    const cropY = boxTop * scale;
+    const cropW = boxWidth * scale;
+    const cropH = boxHeight * scale;
+
+    hiddenCanvas.width = cropW;
+    hiddenCanvas.height = cropH;
+
+    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+    
+    // --- יצירת הצצה ויזואלית (Preview) כדי לראות מה נחתך ---
+    let previewImg = document.getElementById('cropPreview');
+    if (!previewImg) {
+        previewImg = document.createElement('img');
+        previewImg.id = 'cropPreview';
+        previewImg.style = "width: 200px; margin-top: 10px; border: 2px solid white;";
+        document.querySelector('.controls').appendChild(previewImg);
+    }
+    previewImg.src = hiddenCanvas.toDataURL('image/jpeg');
+    // ----------------------------------------------------
+
+    return new Promise((resolve) => {
+        hiddenCanvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.95);
+    });
+}
+
+function formatIsraeliLicensePlate(rawText) {
+    const cleanNumber = rawText.replace(/\D/g, '');
+
+    if (cleanNumber.length === 7) {
+        return `${cleanNumber.slice(0, 2)}-${cleanNumber.slice(2, 5)}-${cleanNumber.slice(5, 7)}`;
+    } else if (cleanNumber.length === 8) {
+        return `${cleanNumber.slice(0, 3)}-${cleanNumber.slice(3, 5)}-${cleanNumber.slice(5, 8)}`;
+    }
+    return null; 
+}
+
+async function processOCR() {
+    if (!video.srcObject) return;
+
+    statusText.innerText = "מבצע חיתוך ושולח לזיהוי...";
+    resultInput.value = "";
+    
+    const imageBlob = await captureCrop();
+    const formData = new FormData();
+    formData.append('upload', imageBlob, 'plate.jpg');
+    formData.append('regions', 'il'); 
+
+    try {
+        const tokenToUse = API_TOKEN === "YOUR_API_TOKEN" ? 'Token 1fba96be73bbbc54bc2792c6b4fcbe1ae6d43e5c' : `Token ${API_TOKEN}`;
+        
+        const response = await fetch('https://api.platerecognizer.com/v1/plate-reader/', {
+            method: 'POST',
+            headers: { 'Authorization': tokenToUse },
+            body: formData
+        });
+
+        if (response.status === 403 || response.status === 401) {
+            statusText.innerText = "שגיאה: הטוקן חסום או הגיע למגבלה. יש להשתמש בטוקן אישי.";
+            return;
+        }
+
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+            const rawPlate = data.results[0].plate; 
+            const formattedPlate = formatIsraeliLicensePlate(rawPlate);
+
+            if (formattedPlate) {
+                resultInput.value = formattedPlate;
+                statusText.innerText = "הזיהוי הושלם בהצלחה!";
+            } else {
+                statusText.innerText = `זוהה מספר חלקי/לא תקני: ${rawPlate}`;
+            }
+        } else {
+            statusText.innerText = "לוח הרישוי לא נמצא בתמונה החתוכה (ראה הצצה למטה).";
+        }
+
+    } catch (error) {
+        console.error(error);
+        statusText.innerText = "שגיאת רשת/תקשורת עם שרת ה-OCR.";
+    }
+}
+
+snapBtn.addEventListener('click', processOCR);
+startCamera();
     </script>
 </body>
 </html>
