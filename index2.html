@@ -142,12 +142,12 @@
 
 <script>
     // הגדרות חיבור ל-Supabase - יש להחליף בפרטים האמיתיים שלך
-    const SUPABASE_URL = "YOUR_SUPABASE_URL";
-    const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const SUPABASE_URL = "https://mdnwgdbdmnozcsmxiupt.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_AxtO6kLoX9eHmzTIoBKD3w_ISvabvy3";
     let supabase = null;
     
     try {
-        if(SUPABASE_URL !== "YOUR_SUPABASE_URL") {
+        if(SUPABASE_URL !== "https://mdnwgdbdmnozcsmxiupt.supabase.co") {
             supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
     } catch(e) { console.error("Supabase init error", e); }
