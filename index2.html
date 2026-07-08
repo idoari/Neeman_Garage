@@ -1,10 +1,11 @@
-           <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>סורק מספרי רישוי</title>
-    <!-- טעינת ספריות -->
+    <title>סורק מספרי רישוי ותמלול</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body {
@@ -30,7 +31,6 @@
         h1, h2 { color: #333; margin-bottom: 20px; font-size: 1.5em; }
         h2 { font-size: 1.2em; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; text-align: right; }
         
-        /* המצלמה המקורית שלך */
         video, canvas {
             width: 100%;
             max-height: 300px;
@@ -38,7 +38,7 @@
             background: #000;
             margin-bottom: 15px;
         }
-        canvas { display: none; } /* נשאר חבוי */
+        canvas { display: none; } 
         
         button {
             width: 100%;
@@ -90,7 +90,6 @@
 </head>
 <body>
 
-<!-- כרטיס 1: המצלמה המקורית שלך -->
 <div class="container">
     <h1>סורק לוחית רישוי</h1>
     <video id="video" autoplay playsinline></video>
@@ -99,7 +98,6 @@
     <div id="status">מפעיל מצלמה...</div>
 </div>
 
-<!-- כרטיס 2: השדות החדשים של הטבלה שלך והמאגר הממשלתי -->
 <div class="container">
     <h2>פרטי הרכב מהמאגר</h2>
     <div class="form-group">
@@ -123,16 +121,15 @@
     </div>
 </div>
 
-<!-- כרטיס 3: הקלטת קול ושמירה ל-DB -->
 <div class="container">
     <h2>הקלטה קולית ושמירה</h2>
     <div class="form-group">
-        <label>הקלטת שמע</label>
-        <button id="btn-record" class="btn-audio">🎤 התחל הקלטת קול</button>
+        <label>הקלטת שמע ותמלול בזמן אמת</label>
+        <button id="btn-record" class="btn-audio">🎤 התחל הקלטה ותמלול</button>
     </div>
     <div class="form-group">
         <label>הערות / טקסט מתומלל (transcribed_text)</label>
-        <textarea id="transcribed_text" rows="3" placeholder="הערות חופשיות או תמליל שמע..."></textarea>
+        <textarea id="transcribed_text" rows="3" placeholder="לחץ על כפתור ההקלטה ודבר..."></textarea>
     </div>
     
     <button id="btn-save-db" disabled>💾 שמור הכל בבסיס הנתונים</button>
@@ -140,24 +137,23 @@
 </div>
 
 <script>
-    // הגדרות חיבור ל-Supabase - יש להחליף בפרטים האמיתיים שלך
+    // הגדרות חיבור ל-Supabase
     const SUPABASE_URL = "https://mdnwgdbdmnozcsmxiupt.supabase.co";
     const SUPABASE_KEY = "sb_publishable_AxtO6kLoX9eHmzTIoBKD3w_ISvabvy3";
     let supabase = null;
     
     try {
         if(SUPABASE_URL !== "https://mdnwgdbdmnozcsmxiupt.supabase.co") {
-            supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
     } catch(e) { console.error("Supabase init error", e); }
 
-    // אלמנטים מהקוד המקורי שלך
+    // אלמנטים
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const captureBtn = document.getElementById('capture-btn');
     const statusDiv = document.getElementById('status');
     
-    // אלמנטים חדשים
     const inputPlate = document.getElementById('plate_number');
     const btnFetchGov = document.getElementById('btn-fetch-gov');
     const govStatus = document.getElementById('gov-status');
@@ -173,8 +169,20 @@
     let mediaRecorder;
     let audioChunks = [];
     let audioBlob = null;
+    
+    // הגדרת מנוע זיהוי דיבור (Speech Recognition)
+    let recognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true; // הקלטה רציפה
+        recognition.interimResults = true; // הצגת תוצאות זמניות תוך כדי דיבור
+        recognition.lang = 'he-IL'; // שפה: עברית
+    } else {
+        console.warn("דפדפן זה אינו תומך בתמלול קולי מובנה (השתמש ב-Chrome או Android).");
+    }
 
-    // --- קוד המצלמה המקורי שלך בדיוק (לא נגענו) ---
+    // --- הפעלת מצלמה ---
     async function initCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -190,7 +198,7 @@
         }
     }
 
-    // --- מנגנון ה-OCR המקורי שלך עם שילוב כפתור המאגר ---
+    // --- מנגנון ה-OCR ---
     async function captureAndRecognize() {
         statusDiv.innerText = "מצלם ומעבד תמונה...";
         inputPlate.value = ""; 
@@ -223,7 +231,7 @@
             if (cleanNumber) {
                 inputPlate.value = cleanNumber;
                 statusDiv.innerText = "הסריקה הושלמה בהצלחה!";
-                btnFetchGov.disabled = false; // הפעלת כפתור המאגר הממשלתי
+                btnFetchGov.disabled = false;
             } else {
                 statusDiv.innerText = "לא זוהו ספרות, נסה שוב מזווית טובה יותר.";
             }
@@ -234,12 +242,11 @@
         }
     }
 
-    // מאפשר ללחוץ על הכפתור הממשלתי גם אם המשתמש מתקן/הקליד ידנית
     inputPlate.addEventListener('input', () => {
         btnFetchGov.disabled = inputPlate.value.trim() === "";
     });
 
-    // --- פונקציה חדשה: קריאה ל-Edge Function עבור משרד התחבורה ---
+    // --- שליפת נתונים משרד התחבורה ---
     btnFetchGov.addEventListener('click', async () => {
         if(!supabase) {
             govStatus.innerText = "שגיאה: יש להגדיר קודם את מפתחות Supabase בקוד.";
@@ -260,45 +267,79 @@
                 inputModel.value = data.model;
                 inputYear.value = data.year;
                 govStatus.innerText = "הנתונים נשלפו בהצלחה!";
-                btnSaveDb.disabled = false; // הפעלת כפתור השמירה ב-DB
+                btnSaveDb.disabled = false;
             } else {
                 govStatus.innerText = data.message || "הרכב לא נמצא במאגר הממשלתי.";
                 inputManuf.value = ""; inputModel.value = ""; inputYear.value = "";
-                btnSaveDb.disabled = false; // מאפשר שמירה בכל זאת
+                btnSaveDb.disabled = false;
             }
         } catch (e) {
             govStatus.innerText = "שגיאה בתקשורת: " + e.message;
         }
     });
 
-    // --- פונקציה חדשה: הקלטת קול מהמיקרופון ---
+    // --- מנגנון הקלטת קול משולב עם תמלול (הקוד המתוקן) ---
     btnRecord.addEventListener('click', async () => {
         if (!mediaRecorder || mediaRecorder.state === "inactive") {
             audioChunks = [];
+            txtTranscribed.value = ""; // איפוס הטקסט הקודם
+            
             try {
+                // א. בקשת גישה למיקרופון עבור הקלטת קובץ השמע
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 
                 mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                    btnRecord.innerText = "🎤 הקלט שוב קול";
-                    btnRecord.classList.remove('recording-active');
-                    txtTranscribed.placeholder = "(קובץ השמע מוכן, לחץ על שמירה למטה)";
                 };
 
+                // ב. הפעלת ההקלטה
                 mediaRecorder.start();
-                btnRecord.innerText = "🛑 עצור הקלטה";
+                btnRecord.innerText = "🛑 עצור הקלטה ותמלול";
                 btnRecord.classList.add('recording-active');
+
+                // ג. הפעלת מנוע התמלול (Speech Recognition) במקביל
+                if (recognition) {
+                    recognition.onresult = (event) => {
+                        let interimTranscript = '';
+                        let finalTranscript = '';
+
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            if (event.results[i].isFinal) {
+                                finalTranscript += event.results[i][0].transcript;
+                            } else {
+                                interimTranscript += event.results[i][0].transcript;
+                            }
+                        }
+                        // עדכון תיבת הטקסט בזמן אמת
+                        txtTranscribed.value = finalTranscript || interimTranscript;
+                    };
+
+                    recognition.onerror = (err) => {
+                        console.error("Speech recognition error", err);
+                    };
+
+                    recognition.start();
+                } else {
+                    txtTranscribed.placeholder = "ההקלטה עובדת, אך הדפדפן שלך אינו תומך בתמלול אוטומטי לעברית.";
+                }
+
             } catch (err) {
                 alert("לא ניתן לגשת למיקרופון: " + err.message);
             }
         } else {
+            // עצירת ההקלטה והתמלול
             mediaRecorder.stop();
+            if (recognition) {
+                recognition.stop();
+            }
+            btnRecord.innerText = "🎤 הקלט ותמלל שוב";
+            btnRecord.classList.remove('recording-active');
         }
     });
 
-    // --- פונקציה חדשה: העלאת שמע ושמירת השורה בטבלה שלך ---
+    // --- שמירה ל-Supabase DB ---
     btnSaveDb.addEventListener('click', async () => {
         if(!supabase) return;
         dbStatus.innerText = "שומר נתונים במערכת...";
@@ -306,7 +347,6 @@
         let fileUrl = null;
 
         try {
-            // א. העלאת קובץ קול ל-Storage אם קיים
             if (audioBlob) {
                 dbStatus.innerText = "מעלה קובץ שמע לענן...";
                 const fileName = `audio_${Date.now()}_${inputPlate.value.trim()}.mp3`;
@@ -323,7 +363,6 @@
                 fileUrl = urlData.publicUrl;
             }
 
-            // ב. שמירה בטבלה בדיוק לפי השדות שלך
             dbStatus.innerText = "רושם בבסיס הנתונים...";
             const { error: dbError } = await supabase
                 .from('vehicles')
@@ -333,7 +372,7 @@
                     car_model: inputModel.value,
                     car_year: inputYear.value ? parseInt(inputYear.value) : null,
                     record_file_url: fileUrl,
-                    transcribed_text: txtTranscribed.value
+                    transcribed_text: txtTranscribed.value // כאן יישמר הטקסט שתומלל אוטומטית!
                 });
 
             if (dbError) throw dbError;
@@ -346,7 +385,6 @@
         }
     });
 
-    // מאזינים לאירועים המקוריים שלך
     captureBtn.addEventListener('click', captureAndRecognize);
     window.addEventListener('load', initCamera);
 </script>
