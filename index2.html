@@ -1,62 +1,114 @@
-<!DOCTYPE html>
+           <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת ניהול וסריקת רכבים</title>
+    <title>סורק מספרי רישוי</title>
+    <!-- טעינת ספריות -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .card { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); box-sizing: border-box; margin-bottom: 20px; }
-        h2 { color: #1a73e8; margin-top: 0; font-size: 1.4em; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+        h1, h2 { color: #333; margin-bottom: 20px; font-size: 1.5em; }
+        h2 { font-size: 1.2em; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; text-align: right; }
         
-        /* וידאו וכוונת */
-        .camera-container { position: relative; width: 100%; height: 220px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px; }
-        video { width: 100%; height: 100%; object-fit: cover; background: #000; }
-        canvas { display: none; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        .scanner-box { width: 85%; height: 35%; border: 3px solid #1a73e8; border-radius: 8px; box-shadow: 0 0 15px rgba(26,115,232,0.5); }
+        /* המצלמה המקורית שלך */
+        video, canvas {
+            width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            background: #000;
+            margin-bottom: 15px;
+        }
+        canvas { display: none; } /* נשאר חבוי */
         
-        /* טפסים וכפתורים */
-        .form-group { margin-bottom: 12px; text-align: right; }
-        label { font-weight: 600; color: #4a4a4a; display: block; margin-bottom: 5px; font-size: 0.9em; }
-        input[type="text"], input[type="number"], textarea { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; box-sizing: border-box; font-size: 1em; background: #fafafa; }
-        input[readonly] { background: #f0f2f5; color: #555; }
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
         
-        .btn { width: 100%; padding: 12px; font-size: 1em; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 5px; transition: background 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .btn-primary { background: #1a73e8; color: white; }
-        .btn-primary:hover { background: #155cb4; }
-        .btn-secondary { background: #34a853; color: white; }
-        .btn-secondary:hover { background: #2d8e47; }
-        .btn-danger { background: #ea4335; color: white; }
-        .btn-audio { background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; }
-        .btn:disabled { background: #e8eaed; color: #bcc1c6; cursor: not-allowed; border: none; }
+        .btn-secondary { background-color: #28a745; }
+        .btn-secondary:hover { background-color: #218838; }
+        .btn-audio { background-color: #6c757d; }
+        .btn-audio:hover { background-color: #5a6268; }
+        .recording-active { animation: pulse 1.5s infinite; background-color: #dc3545 !important; }
         
-        .status-text { font-size: 0.85em; color: #5f6368; font-style: italic; text-align: center; margin-top: 5px; min-height: 18px; word-break: break-all; }
-        .recording-active { animation: pulse 1.5s infinite; background: #ea4335 !important; color: white !important; }
+        .form-group {
+            margin-bottom: 12px;
+            text-align: right;
+        }
+        label { font-weight: bold; display: block; margin-bottom: 5px; color: #555; }
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            color: #333;
+        }
+        input[readonly] { background-color: #e9ecef; color: #495057; }
+        #plate_number { font-size: 24px; text-align: center; font-weight: bold; border: 2px solid #007bff; }
+        
+        #status, .status-small {
+            color: #666;
+            font-style: italic;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>1. סריקת לוחית רישוי</h2>
-    <div class="camera-container">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="overlay"><div class="scanner-box" id="scanner-box"></div></div>
-        <canvas id="canvas"></canvas>
-    </div>
-    <button class="btn btn-primary" id="btn-scan">צלם וסרוק לוחית</button>
-    <div class="status-text" id="scan-status">מפעיל מצלמה...</div>
+<!-- כרטיס 1: המצלמה המקורית שלך -->
+<div class="container">
+    <h1>סורק לוחית רישוי</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <button id="capture-btn">צלם וסרוק מספר</button>
+    <div id="status">מפעיל מצלמה...</div>
 </div>
 
-<div class="card">
-    <h2>2. פרטי הרכב (מתושאל מהמאגר)</h2>
+<!-- כרטיס 2: השדות החדשים של הטבלה שלך והמאגר הממשלתי -->
+<div class="container">
+    <h2>פרטי הרכב מהמאגר</h2>
     <div class="form-group">
         <label>מספר רישוי (plate_number)</label>
-        <input type="text" id="plate_number" style="font-size: 1.3em; text-align: center; font-weight: bold; letter-spacing: 1px;">
+        <input type="text" id="plate_number" placeholder="המספר יופיע כאן">
     </div>
-    <button class="btn btn-secondary" id="btn-fetch-gov" disabled>משוך נתונים ממשלתיים</button>
-    <div class="status-text" id="gov-status"></div>
+    <button id="btn-fetch-gov" class="btn-secondary" disabled>משוך נתונים ממשלתיים</button>
+    <div id="gov-status" class="status-small"></div>
     
     <div class="form-group">
         <label>יצרן רכב (car_manufacturer)</label>
@@ -72,27 +124,24 @@
     </div>
 </div>
 
-<div class="card">
-    <h2>3. תזכורת קולית ומידע נלווה</h2>
+<!-- כרטיס 3: הקלטת קול ושמירה ל-DB -->
+<div class="container">
+    <h2>הקלטה קולית ושמירה</h2>
     <div class="form-group">
         <label>הקלטת שמע</label>
-        <button class="btn btn-audio" id="btn-record">🎤 התחל הקלטה</button>
+        <button id="btn-record" class="btn-audio">🎤 התחל הקלטת קול</button>
     </div>
     <div class="form-group">
-        <label>טקסט מתומלל / הערות (transcribed_text)</label>
-        <textarea id="transcribed_text" rows="3" placeholder="הערות או תמלול קולי יופיעו כאן..."></textarea>
+        <label>הערות / טקסט מתומלל (transcribed_text)</label>
+        <textarea id="transcribed_text" rows="3" placeholder="הערות חופשיות או תמליל שמע..."></textarea>
     </div>
     
-    <button class="btn btn-secondary" id="btn-save-db" style="background: #1a73e8; margin-top: 15px;" disabled>💾 שמור הכל בבסיס הנתונים</button>
-    <div class="status-text" id="db-status"></div>
+    <button id="btn-save-db" disabled>💾 שמור הכל בבסיס הנתונים</button>
+    <div id="db-status" class="status-small"></div>
 </div>
 
-<!-- טעינת ספריות בסוף הדף כדי שלא יחסמו את המצלמה בטעינה -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-    // הגדרות חיבור ל-Supabase - החלף בפרטים שלך
+    // הגדרות חיבור ל-Supabase - יש להחליף בפרטים האמיתיים שלך
     const SUPABASE_URL = "YOUR_SUPABASE_URL";
     const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
     let supabase = null;
@@ -103,13 +152,13 @@
         }
     } catch(e) { console.error("Supabase init error", e); }
 
-    // אלמנטים בדף
+    // אלמנטים מהקוד המקורי שלך
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const scannerBox = document.getElementById('scanner-box');
-    const btnScan = document.getElementById('btn-scan');
-    const scanStatus = document.getElementById('scan-status');
+    const captureBtn = document.getElementById('capture-btn');
+    const statusDiv = document.getElementById('status');
     
+    // אלמנטים חדשים
     const inputPlate = document.getElementById('plate_number');
     const btnFetchGov = document.getElementById('btn-fetch-gov');
     const govStatus = document.getElementById('gov-status');
@@ -126,91 +175,75 @@
     let audioChunks = [];
     let audioBlob = null;
 
-    // 1. אתחול המצלמה (העתק מדויק מהגרסה שעבדה לך בגיטהאב)
+    // --- קוד המצלמה המקורי שלך בדיוק (לא נגענו) ---
     async function initCamera() {
-        scanStatus.innerText = "מבקש גישה למצלמה...";
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' },
                 audio: false
             });
             video.srcObject = stream;
-            video.setAttribute('playsinline', true);
-            video.setAttribute('autoplay', true);
-            
-            // הפעלה מפורשת של הוידאו
-            video.play().then(() => {
-                scanStatus.innerText = "המצלמה מוכנה לסריקה";
-            }).catch(playErr => {
-                scanStatus.innerText = "המצלמה נטענה אך נעצרה. לחץ על המסך לניגון.";
-                console.error(playErr);
-            });
-
+            statusDiv.innerText = "המצלמה מוכנה לשימוש";
         } catch (err) {
-            console.error("Camera access error:", err);
-            // מציג למשתמש את השגיאה האמיתית של הדפדפן לניתוח
-            scanStatus.innerText = "שגיאה: " + err.name + " - " + err.message + ". ודא שאתה גולש ב-HTTPS מאובטח.";
+            console.error("שגיאה בגישה למצלמה: ", err);
+            statusDiv.innerText = "לא ניתן לגשת למצלמה. ודא שאתה משתמש ב-HTTPS.";
+            captureBtn.disabled = true;
         }
     }
 
-    // 2. ביצוע צילום חתוך ו-OCR לוקלי
-    btnScan.addEventListener('click', async () => {
-        if (!video.srcObject) {
-            scanStatus.innerText = "המצלמה לא פעילה.";
-            return;
-        }
-        scanStatus.innerText = "מצלם ומעבד...";
+    // --- מנגנון ה-OCR המקורי שלך עם שילוב כפתור המאגר ---
+    async function captureAndRecognize() {
+        statusDiv.innerText = "מצלם ומעבד תמונה...";
+        inputPlate.value = ""; 
         
-        const videoWidth = video.videoWidth || video.clientWidth;
-        const videoHeight = video.videoHeight || video.clientHeight;
-        const targetRect = scannerBox.getBoundingClientRect();
-        const videoRect = video.getBoundingClientRect();
-
-        const scaleX = videoWidth / video.clientWidth;
-        const scaleY = videoHeight / video.clientHeight;
-
-        const cropX = (targetRect.left - videoRect.left) * scaleX;
-        const cropY = (targetRect.top - videoRect.top) * scaleY;
-        const cropWidth = targetRect.width * scaleX;
-        const cropHeight = targetRect.height * scaleY;
-
-        canvas.width = cropWidth;
-        canvas.height = cropHeight;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
         
         const context = canvas.getContext('2d');
-        context.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         try {
-            if (typeof Tesseract === 'undefined') {
-                scanStatus.innerText = "ספריית ה-OCR עדיין נטענת מהאינטרנט, המתן שנייה ונסה שוב.";
-                return;
-            }
-            const result = await Tesseract.recognize(canvas, 'eng', {
-                config: { tessedit_char_whitelist: '0123456789' }
-            });
+            const result = await Tesseract.recognize(
+                canvas,
+                'eng',
+                {
+                    logger: m => {
+                        if(m.status === 'recognizing text') {
+                            statusDiv.innerText = `סורק... ${Math.round(m.progress * 100)}%`;
+                        }
+                    },
+                    config: {
+                        tessedit_char_whitelist: '0123456789'
+                    }
+                }
+            );
 
-            const cleanNumber = result.data.text.replace(/[^0-9]/g, '');
+            const rawText = result.data.text;
+            const cleanNumber = rawText.replace(/[^0-9]/g, '');
+
             if (cleanNumber) {
                 inputPlate.value = cleanNumber;
-                scanStatus.innerText = "לוחית זוהתה!";
-                btnFetchGov.disabled = false;
+                statusDiv.innerText = "הסריקה הושלמה בהצלחה!";
+                btnFetchGov.disabled = false; // הפעלת כפתור המאגר הממשלתי
             } else {
-                scanStatus.innerText = "לא זוהו ספרות. נסה שוב.";
-                btnFetchGov.disabled = false;
+                statusDiv.innerText = "לא זוהו ספרות, נסה שוב מזווית טובה יותר.";
             }
-        } catch (e) {
-            scanStatus.innerText = "שגיאה בפענוח ה-OCR: " + e.message;
-        }
-    });
 
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerText = "שגיאה בתהליך ה-OCR.";
+        }
+    }
+
+    // מאפשר ללחוץ על הכפתור הממשלתי גם אם המשתמש מתקן/הקליד ידנית
     inputPlate.addEventListener('input', () => {
         btnFetchGov.disabled = inputPlate.value.trim() === "";
     });
 
-    // 3. משיכת נתונים ממאגר הרכב
+    // --- פונקציה חדשה: קריאה ל-Edge Function עבור משרד התחבורה ---
     btnFetchGov.addEventListener('click', async () => {
         if(!supabase) {
-            govStatus.innerText = "שגיאה: לא הגדרת את מפתחות Supabase בקוד (שורות 93-94).";
+            govStatus.innerText = "שגיאה: יש להגדיר קודם את מפתחות Supabase בקוד.";
             return;
         }
         govStatus.innerText = "פונה למאגר משרד התחבורה...";
@@ -228,18 +261,18 @@
                 inputModel.value = data.model;
                 inputYear.value = data.year;
                 govStatus.innerText = "הנתונים נשלפו בהצלחה!";
-                btnSaveDb.disabled = false;
+                btnSaveDb.disabled = false; // הפעלת כפתור השמירה ב-DB
             } else {
-                govStatus.innerText = data.message || "הרכב לא נמצא במאגר.";
+                govStatus.innerText = data.message || "הרכב לא נמצא במאגר הממשלתי.";
                 inputManuf.value = ""; inputModel.value = ""; inputYear.value = "";
-                btnSaveDb.disabled = false; 
+                btnSaveDb.disabled = false; // מאפשר שמירה בכל זאת
             }
         } catch (e) {
             govStatus.innerText = "שגיאה בתקשורת: " + e.message;
         }
     });
 
-    // 4. מנגנון הקלטת קול
+    // --- פונקציה חדשה: הקלטת קול מהמיקרופון ---
     btnRecord.addEventListener('click', async () => {
         if (!mediaRecorder || mediaRecorder.state === "inactive") {
             audioChunks = [];
@@ -252,7 +285,7 @@
                     audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
                     btnRecord.innerText = "🎤 הקלט שוב קול";
                     btnRecord.classList.remove('recording-active');
-                    txtTranscribed.placeholder = "(קובץ השמע מוכן לשמירה)";
+                    txtTranscribed.placeholder = "(קובץ השמע מוכן, לחץ על שמירה למטה)";
                 };
 
                 mediaRecorder.start();
@@ -266,7 +299,7 @@
         }
     });
 
-    // 5. שמירת הנתונים ב-Supabase
+    // --- פונקציה חדשה: העלאת שמע ושמירת השורה בטבלה שלך ---
     btnSaveDb.addEventListener('click', async () => {
         if(!supabase) return;
         dbStatus.innerText = "שומר נתונים במערכת...";
@@ -274,8 +307,9 @@
         let fileUrl = null;
 
         try {
+            // א. העלאת קובץ קול ל-Storage אם קיים
             if (audioBlob) {
-                dbStatus.innerText = "מעלה קובץ שמע...";
+                dbStatus.innerText = "מעלה קובץ שמע לענן...";
                 const fileName = `audio_${Date.now()}_${inputPlate.value.trim()}.mp3`;
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('vehicle-records')
@@ -290,7 +324,8 @@
                 fileUrl = urlData.publicUrl;
             }
 
-            dbStatus.innerText = "מעדכן את בסיס הנתונים...";
+            // ב. שמירה בטבלה בדיוק לפי השדות שלך
+            dbStatus.innerText = "רושם בבסיס הנתונים...";
             const { error: dbError } = await supabase
                 .from('vehicles')
                 .upsert({ 
@@ -303,7 +338,7 @@
                 });
 
             if (dbError) throw dbError;
-            dbStatus.innerText = "✅ הרשומה נשמרה ב-DB בהצלחה!";
+            dbStatus.innerText = "✅ הרשומה נשמרה בטבלה בהצלחה!";
             audioBlob = null;
             
         } catch (e) {
@@ -312,8 +347,10 @@
         }
     });
 
-    // הפעלה מיידית של המצלמה ברגע שהדף נטען חלקית
-    initCamera();
+    // מאזינים לאירועים המקוריים שלך
+    captureBtn.addEventListener('click', captureAndRecognize);
+    window.addEventListener('load', initCamera);
 </script>
+
 </body>
 </html>
