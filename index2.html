@@ -119,19 +119,31 @@
     let audioChunks = [];
     let audioBlob = null;
 
-    // 1. אתחול המצלמה
+   // 1. אתחול המצלמה - מעודכן לפי הגדרות הקוד המקוריות שלך שעבדו
     async function initCamera() {
         try {
+            // החזרנו את ההגדרות הפשוטות והבטוחות מהקוד המקורי שלך
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                video: { facingMode: 'environment' }, 
                 audio: false
             });
+            
             video.srcObject = stream;
+            
+            // תוספת קריטית: הכרחת הוידאו לנגן כדי למנוע מצב שהוא קופא על פריים שחור באייפון
+            video.setAttribute('playsinline', true);
+            video.setAttribute('autoplay', true);
+            
+            // מבטיח שהוידאו יתחיל לרוץ במאה אחוז
+            await video.play();
+            
             scanStatus.innerText = "המצלמה מוכנה לסריקה";
         } catch (err) {
-            scanStatus.innerText = "שגיאה בגישה למצלמה. ודא חיבור HTTPS.";
+            console.error("Camera error:", err);
+            scanStatus.innerText = "שגיאה בגישה למצלמה. ודא חיבור HTTPS והרשאות.";
         }
     }
+
 
     // 2. ביצוע צילום חתוך ו-OCR לוקלי
     btnScan.addEventListener('click', async () => {
