@@ -160,25 +160,33 @@
             status.innerText = 'ההקלטה נעצרה.';
         };
 
-        // עיבוד התוצאות בזמן אמת
-        recognition.onresult = (event) => {
-            let interimTranscript = '';
+       // עיבוד התוצאות בזמן אמת - ללא כפילויות
+recognition.onresult = (event) => {
+    let currentFinalTranscript = ''; // מכיל את כל מה שסופי בסיבוב הנוכחי
+    let interimTranscript = '';      // מכיל את מה שנאמר עכשיו ועוד לא סופי
 
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript + ' ';
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
-            }
-
-            // עדכון תיבת הטקסט: שילוב של הטקסט הסופי המאושר + מה שנאמר ברגע זה
-            transcriptArea.value = finalTranscript + interimTranscript;
-            
-            // גלילה אוטומטית למטה כשהטקסט מתארך
-            transcriptArea.scrollTop = transcriptArea.scrollHeight;
-        };
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+        // ניקוי רווחים מיותרים מהתמלול של המקטע הנוכחי
+        const transcriptSegment = event.results[i][0].transcript;
+        
+        if (event.results[i].isFinal) {
+            currentFinalTranscript += transcriptSegment + ' ';
+        } else {
+            interimTranscript += transcriptSegment;
+        }
     }
+
+    // אם יש טקסט סופי חדש, נוסיף אותו למשתנה הגלובלי שלנו ששומר את כל ההקלטה
+    if (currentFinalTranscript) {
+        finalTranscript += currentFinalTranscript;
+    }
+
+    // עדכון תיבת הטקסט: הטקסט המצטבר הסופי + המילה האחרונה שנאמרת ברגע זה
+    transcriptArea.value = finalTranscript + interimTranscript;
+    
+    // גלילה אוטומטית למטה
+    transcriptArea.scrollTop = transcriptArea.scrollHeight;
+};
 </script>
 
 </body>
