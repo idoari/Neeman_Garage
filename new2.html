@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>תמלול איכותי עם Supabase & Whisper</title>
+    <style>
+        /* (אותו עיצוב יפה מקודם...) */
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f4f7f6; margin:0; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 480px; text-align: center; }
+        .btn { background: #007bff; color: white; border: none; padding: 12px 24px; font-size: 18px; border-radius: 50px; cursor: pointer; }
+        .btn.recording { background: #dc3545; }
+        textarea { width: 100%; height: 150px; margin-top: 25px; padding: 15px; border: 2px solid #ddd; border-radius: 8px; resize: none; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>תמלול דיבור מקצועי (Whisper)</h1>
+    <button id="recordBtn" class="btn">🎙️ התחל הקלטה</button>
+    <div id="status" style="margin-top:10px; color:#666;">לחץ כדי לדבר...</div>
+    <textarea id="transcriptArea" placeholder="התמלול המדויק יופיע כאן לאחר סיום ההקלטה..." readonly></textarea>
+</div>
+
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    const recordBtn = document.getElementById('recordBtn');
+    const status = document.getElementById('status');
+    const transcriptArea = document.getElementById('transcriptArea');
+
+    // כתובת ה-Edge Function שלך ב-Supabase
+    const SUPABASE_FUNCTION_URL = 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/transcribe';
+
+    recordBtn.addEventListener('click', async () => {
+        if (!isRecording) {
+            // תחילת הקלטה
+            audioChunks = [];
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                status.innerText = "מתמלל כעת ב-AI, אנא המתן...";
+                
+                // הפיכת צ'אנקים של אודיו לקובץ אחד
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                
+                // שליחה ל-Supabase Edge Function
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
+
+                try {
+                    const response = await fetch(SUPABASE_FUNCTION_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (result.text) {
+                        transcriptArea.value = result.text;
+                        status.innerText = "התמלול הסתיים בהצלחה!";
+                    } else {
+                        status.innerText = "שגיאה בתמלול.";
+                    }
+                } catch (err) {
+                    console.error(err);
+                    status.innerText = "תקלת תקשורת מול השרת.";
+                }
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            recordBtn.innerText = "⏹️ עצור הקלטה";
+            recordBtn.classList.add('recording');
+            status.innerText = "מקליט... דברו חופשי.";
+        } else {
+            // עצירת הקלטה ושליחה אוטומטית
+            mediaRecorder.stop();
+            isRecording = false;
+            recordBtn.innerText = "🎙️ התחל הקלטה";
+            recordBtn.classList.remove('recording');
+        }
+    });
+</script>
+
+</body>
+</html>
