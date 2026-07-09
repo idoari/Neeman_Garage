@@ -160,29 +160,18 @@
             status.innerText = 'ההקלטה נעצרה.';
         };
 
-       // עיבוד התוצאות בזמן אמת - ללא כפילויות
+// עיבוד התוצאות בזמן אמת - פתרון מוחלט לכפילויות
 recognition.onresult = (event) => {
-    let currentFinalTranscript = ''; // מכיל את כל מה שסופי בסיבוב הנוכחי
-    let interimTranscript = '';      // מכיל את מה שנאמר עכשיו ועוד לא סופי
+    let fullTranscript = ''; // מאפסים ובונים מחדש את כל הטקסט מנקודת האפס
 
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-        // ניקוי רווחים מיותרים מהתמלול של המקטע הנוכחי
-        const transcriptSegment = event.results[i][0].transcript;
-        
-        if (event.results[i].isFinal) {
-            currentFinalTranscript += transcriptSegment + ' ';
-        } else {
-            interimTranscript += transcriptSegment;
-        }
+    // עוברים על כל התוצאות שנצברו מתחילת ההקלטה ועד לרגע זה
+    for (let i = 0; i < event.results.length; ++i) {
+        // מחברים את כל המקומות, בין אם הם סופיים ובין אם הם זמניים
+        fullTranscript += event.results[i][0].transcript;
     }
 
-    // אם יש טקסט סופי חדש, נוסיף אותו למשתנה הגלובלי שלנו ששומר את כל ההקלטה
-    if (currentFinalTranscript) {
-        finalTranscript += currentFinalTranscript;
-    }
-
-    // עדכון תיבת הטקסט: הטקסט המצטבר הסופי + המילה האחרונה שנאמרת ברגע זה
-    transcriptArea.value = finalTranscript + interimTranscript;
+    // מעדכנים את תיבת הטקסט בתוצאה המלאה והעדכנית ביותר
+    transcriptArea.value = fullTranscript;
     
     // גלילה אוטומטית למטה
     transcriptArea.scrollTop = transcriptArea.scrollHeight;
