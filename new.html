@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תמלול דיבור בזמן אמת</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            outline: none;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn.recording {
+            background-color: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+            height: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-top: 25px;
+            padding: 15px;
+            border: 2px border #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: none;
+            box-sizing: border-box;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>תמלול דיבור לעברית</h1>
+    
+    <button id="recordBtn" class="btn">
+        <span id="btnIcon">🎙️</span>
+        <span id="btnText">התחל הקלטה</span>
+    </button>
+    
+    <div id="status" class="status">לחץ על הכפתור כדי להתחיל לדבר...</div>
+    
+    <textarea id="transcriptArea" placeholder="הטקסט המתוזמן יופיע כאן תוך כדי דיבור..." readonly></textarea>
+</div>
+
+<script>
+    // בדיקת תמיכה בדפדפן
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+        alert("הדפדפן שלך לא תומך ב-Web Speech API. מומלץ להשתמש ב-Google Chrome או Microsoft Edge.");
+    } else {
+        const recognition = new SpeechRecognition();
+        
+        // הגדרות התמלול
+        recognition.lang = 'he-IL'; // הגדרת השפה לעברית
+        recognition.continuous = true; // המשך הקלטה גם כשיש הפסקות בדיבור
+        recognition.interimResults = true; // הצגת תוצאות ביניים (תוך כדי דיבור)
+
+        // אלמנטים מה-DOM
+        const recordBtn = document.getElementById('recordBtn');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const status = document.getElementById('status');
+        const transcriptArea = document.getElementById('transcriptArea');
+
+        let isRecording = false;
+        let finalTranscript = ''; // שמירת הטקסט הסופי המאושר
+
+        // לחיצה על כפתור ההקלטה
+        recordBtn.addEventListener('click', () => {
+            if (!isRecording) {
+                recognition.start();
+            } else {
+                recognition.stop();
+            }
+        });
+
+        // אירוע תחילת הקלטה
+        recognition.onstart = () => {
+            isRecording = true;
+            recordBtn.classList.add('recording');
+            btnText.innerText = 'עצור הקלטה';
+            btnIcon.innerText = '⏹️';
+            status.innerText = 'מקשיב לך... דברו ברור.';
+        };
+
+        // אירוע שגיאה
+        recognition.onerror = (event) => {
+            console.error(event.error);
+            status.innerText = `שגיאה: ${event.error}`;
+        };
+
+        // אירוע סיום הקלטה
+        recognition.onend = () => {
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            btnText.innerText = 'התחל הקלטה';
+            btnIcon.innerText = '🎙️';
+            status.innerText = 'ההקלטה נעצרה.';
+        };
+
+        // עיבוד התוצאות בזמן אמת
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript + ' ';
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            // עדכון תיבת הטקסט: שילוב של הטקסט הסופי המאושר + מה שנאמר ברגע זה
+            transcriptArea.value = finalTranscript + interimTranscript;
+            
+            // גלילה אוטומטית למטה כשהטקסט מתארך
+            transcriptArea.scrollTop = transcriptArea.scrollHeight;
+        };
+    }
+</script>
+
+</body>
+</html>
