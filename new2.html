@@ -45,32 +45,33 @@
             };
 
             mediaRecorder.onstop = async () => {
-                status.innerText = "מתמלל כעת ב-AI, אנא המתן...";
-                
-                // הפיכת צ'אנקים של אודיו לקובץ אחד
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                
-                // שליחה ל-Supabase Edge Function
-                const formData = new FormData();
-                formData.append('audio', audioBlob);
+    status.innerText = "מתמלל כעת ב-AI, אנא המתן...";
+    
+    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    const formData = new FormData();
+    formData.append('audio', audioBlob);
 
-                try {
-                    const response = await fetch(SUPABASE_FUNCTION_URL, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const result = await response.json();
-                    
-                    if (result.text) {
-                        transcriptArea.value = result.text;
-                        status.innerText = "התמלול הסתיים בהצלחה!";
-                    } else {
-                        status.innerText = "שגיאה בתמלול.";
-                    }
-                } catch (err) {
-                    console.error(err);
-                    status.innerText = "תקלת תקשורת מול השרת.";
-                }
+    try {
+        const response = await fetch(SUPABASE_FUNCTION_URL, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.text) {
+            transcriptArea.value = result.text;
+            status.innerText = "התמלול הסתיים בהצלחה!";
+        } else {
+            // הדפסת השגיאה המדויקת שהשרת החזיר
+            console.error("שגיאה מהשרת:", result);
+            status.innerText = `שגיאה בתמלול: ${result.error || JSON.stringify(result)}`;
+        }
+    } catch (err) {
+        console.error(err);
+        status.innerText = "תקלת תקשורת מול השרת.";
+    }
+};
             };
 
             mediaRecorder.start();
