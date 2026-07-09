@@ -159,22 +159,40 @@
             status.innerText = 'ההקלטה נעצרה.';
         };
 
-        // עיבוד התוצאות בזמן אמת - ללא כפילויות וללא קריסות
-        recognition.onresult = (event) => {
-            let fullTranscript = ''; 
+       // עיבוד התוצאות בזמן אמת - סינון אגרסיבי של כפילויות
+recognition.onresult = (event) => {
+    let rawTranscript = ''; 
 
-            // בנייה מחדש של כל המשפטים שנאמרו מתחילת ההקלטה ועד לרגע זה
-            for (let i = 0; i < event.results.length; ++i) {
-                fullTranscript += event.results[i][0].transcript + ' ';
-            }
-
-            // עדכון תיבת הטקסט
-            transcriptArea.value = fullTranscript.trim();
-            
-            // גלילה אוטומטית למטה
-            transcriptArea.scrollTop = transcriptArea.scrollHeight;
-        };
+    // 1. אוספים את כל מה שהדפדפן תמלל עד כה
+    for (let i = 0; i < event.results.length; ++i) {
+        rawTranscript += event.results[i][0].transcript + ' ';
     }
+
+    // 2. פותרים את בעיית הכפילויות ברמת המילים (מנקים כפילויות רצופות)
+    const words = rawTranscript.trim().split(/\s+/);
+    const cleanWords = [];
+    
+    for (let i = 0; i < words.length; i++) {
+        // אם המילה הנוכחית שווה בדיוק למילה הקודמת, נדלג עליה (מונע "מה מה מה")
+        if (i > 0 && words[i] === words[i - 1]) {
+            continue;
+        }
+        
+        // מניעת כפילויות של צמדי מילים רצופים (מונע "מה נשמע מה נשמע")
+        if (i > 1 && words[i] === words[i - 2] && words[i - 1] === words[i - 3]) {
+            // אם זיהינו שזה עתה חזרנו על צמד מילים, נמחק את החזרה
+            continue;
+        }
+
+        cleanWords.push(words[i]);
+    }
+
+    // 3. עדכון התיבה בטקסט הנקי
+    transcriptArea.value = cleanWords.join(' ');
+    
+    // גלילה אוטומטית למטה
+    transcriptArea.scrollTop = transcriptArea.scrollHeight;
+};
 </script>
 
 </body>
