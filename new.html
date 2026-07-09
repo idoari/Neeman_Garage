@@ -56,7 +56,7 @@
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); }
+            0 { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
@@ -73,7 +73,7 @@
             height: 150px;
             margin-top: 25px;
             padding: 15px;
-            border: 2px border #ddd;
+            border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
             resize: none;
@@ -113,9 +113,9 @@
         const recognition = new SpeechRecognition();
         
         // הגדרות התמלול
-        recognition.lang = 'he-IL'; // הגדרת השפה לעברית
-        recognition.continuous = true; // המשך הקלטה גם כשיש הפסקות בדיבור
-        recognition.interimResults = true; // הצגת תוצאות ביניים (תוך כדי דיבור)
+        recognition.lang = 'he-IL'; 
+        recognition.continuous = true; 
+        recognition.interimResults = true; 
 
         // אלמנטים מה-DOM
         const recordBtn = document.getElementById('recordBtn');
@@ -125,7 +125,6 @@
         const transcriptArea = document.getElementById('transcriptArea');
 
         let isRecording = false;
-        let finalTranscript = ''; // שמירת הטקסט הסופי המאושר
 
         // לחיצה על כפתור ההקלטה
         recordBtn.addEventListener('click', () => {
@@ -147,7 +146,7 @@
 
         // אירוע שגיאה
         recognition.onerror = (event) => {
-            console.error(event.error);
+            console.error("שגיאת תמלול:", event.error);
             status.innerText = `שגיאה: ${event.error}`;
         };
 
@@ -160,22 +159,22 @@
             status.innerText = 'ההקלטה נעצרה.';
         };
 
-// עיבוד התוצאות בזמן אמת - פתרון מוחלט לכפילויות
-recognition.onresult = (event) => {
-    let fullTranscript = ''; // מאפסים ובונים מחדש את כל הטקסט מנקודת האפס
+        // עיבוד התוצאות בזמן אמת - ללא כפילויות וללא קריסות
+        recognition.onresult = (event) => {
+            let fullTranscript = ''; 
 
-    // עוברים על כל התוצאות שנצברו מתחילת ההקלטה ועד לרגע זה
-    for (let i = 0; i < event.results.length; ++i) {
-        // מחברים את כל המקומות, בין אם הם סופיים ובין אם הם זמניים
-        fullTranscript += event.results[i][0].transcript;
+            // בנייה מחדש של כל המשפטים שנאמרו מתחילת ההקלטה ועד לרגע זה
+            for (let i = 0; i < event.results.length; ++i) {
+                fullTranscript += event.results[i][0].transcript + ' ';
+            }
+
+            // עדכון תיבת הטקסט
+            transcriptArea.value = fullTranscript.trim();
+            
+            // גלילה אוטומטית למטה
+            transcriptArea.scrollTop = transcriptArea.scrollHeight;
+        };
     }
-
-    // מעדכנים את תיבת הטקסט בתוצאה המלאה והעדכנית ביותר
-    transcriptArea.value = fullTranscript;
-    
-    // גלילה אוטומטית למטה
-    transcriptArea.scrollTop = transcriptArea.scrollHeight;
-};
 </script>
 
 </body>
