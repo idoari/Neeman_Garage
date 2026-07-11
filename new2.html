@@ -2,14 +2,17 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>תמלול איכותי עם Supabase & Whisper</title>
     <style>
-        /* (אותו עיצוב יפה מקודם...) */
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f4f7f6; margin:0; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 480px; text-align: center; }
-        .btn { background: #007bff; color: white; border: none; padding: 12px 24px; font-size: 18px; border-radius: 50px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f4f7f6; margin:0; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 480px; text-align: center; }
+        h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+        .btn { background: #007bff; color: white; border: none; padding: 12px 24px; font-size: 18px; border-radius: 50px; cursor: pointer; transition: all 0.3s; }
+        .btn:hover { background: #0056b3; }
         .btn.recording { background: #dc3545; }
-        textarea { width: 100%; height: 150px; margin-top: 25px; padding: 15px; border: 2px solid #ddd; border-radius: 8px; resize: none; box-sizing: border-box; }
+        .status { margin-top: 10px; color: #666; min-height: 20px; font-size: 14px; }
+        textarea { width: 100%; height: 150px; margin-top: 25px; padding: 15px; border: 2px solid #ddd; border-radius: 8px; resize: none; box-sizing: border-box; font-family: inherit; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -17,7 +20,7 @@
 <div class="container">
     <h1>תמלול דיבור מקצועי (Whisper)</h1>
     <button id="recordBtn" class="btn">🎙️ התחל הקלטה</button>
-    <div id="status" style="margin-top:10px; color:#666;">לחץ כדי לדבר...</div>
+    <div id="status" class="status">לחץ כדי לדבר...</div>
     <textarea id="transcriptArea" placeholder="התמלול המדויק יופיע כאן לאחר סיום ההקלטה..." readonly></textarea>
 </div>
 
@@ -30,58 +33,77 @@
     const status = document.getElementById('status');
     const transcriptArea = document.getElementById('transcriptArea');
 
-    // כתובת ה-Edge Function שלך ב-Supabase
-    const SUPABASE_FUNCTION_URL = 'https://mdnwgdbdmnozcsmxiupt.supabase.co/functions/v1/transcribe';
+    // !!! החלף כאן לכתובת הפרויקט האמיתית שלך ב-Supabase !!!
+    const SUPABASE_FUNCTION_URL = 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/transcribe';
 
     recordBtn.addEventListener('click', async () => {
         if (!isRecording) {
-            // תחילת הקלטה
-            audioChunks = [];
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
-            };
+            try {
+                audioChunks = [];
+                status.innerText = "מבקש גישה למיקרופון...";
+                
+                // ניסיון גישה למיקרופון
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
 
-            mediaRecorder.onstop = async () => {
-    status.innerText = "מתמלל כעת ב-AI, אנא המתן...";
-    
-    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-    const formData = new FormData();
-    formData.append('audio', audioBlob);
+                mediaRecorder.onstop = async () => {
+                    status.innerText = "מתמלל כעת ב-AI, אנא המתן...";
+                    
+                    if (audioChunks.length === 0) {
+                        status.innerText = "שגיאה: לא נקלט מידע מהמיקרופון.";
+                        return;
+                    }
 
-    try {
-        const response = await fetch(SUPABASE_FUNCTION_URL, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok && result.text) {
-            transcriptArea.value = result.text;
-            status.innerText = "התמלול הסתיים בהצלחה!";
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob);
+
+                    try {
+                        const response = await fetch(SUPABASE_FUNCTION_URL, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.ok && result.text) {
+                            transcriptArea.value = result.text;
+                            status.innerText = "התמלול הסתיים בהצלחה!";
+                        } else {
+                            console.error("שגיאה מהשרת:", result);
+                            status.innerText = `שגיאה מהשרת: ${result.error || JSON.stringify(result)}`;
+                        }
+                    } catch (err) {
+                        console.error("תקלת תקשורת:", err);
+                        status.innerText = "תקלת תקשורת (השרת לא זמין או חסום ב-CORS)";
+                    }
+                };
+
+                // התחלת ההקלטה בפועל
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.innerText = "⏹️ עצור הקלטה";
+                recordBtn.classList.add('recording');
+                status.innerText = "מקליט... דברו חופשי.";
+
+            } catch (microphoneError) {
+                console.error("שגיאת מיקרופון:", microphoneError);
+                status.innerText = `שגיאה: לא ניתן לגשת למיקרופון (${microphoneError.name})`;
+            }
         } else {
-            // הדפסת השגיאה המדויקת שהשרת החזיר
-            console.error("שגיאה מהשרת:", result);
-            status.innerText = `שגיאה בתמלול: ${result.error || JSON.stringify(result)}`;
-        }
-    } catch (err) {
-        console.error(err);
-        status.innerText = "תקלת תקשורת מול השרת.";
-    }
-};
-            };
-
-            mediaRecorder.start();
-            isRecording = true;
-            recordBtn.innerText = "⏹️ עצור הקלטה";
-            recordBtn.classList.add('recording');
-            status.innerText = "מקליט... דברו חופשי.";
-        } else {
-            // עצירת הקלטה ושליחה אוטומטית
-            mediaRecorder.stop();
+            // עצירת הקלטה
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+                // כיבוי המיקרופון כדי שלא יישאר פעיל
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
             isRecording = false;
             recordBtn.innerText = "🎙️ התחל הקלטה";
             recordBtn.classList.remove('recording');
