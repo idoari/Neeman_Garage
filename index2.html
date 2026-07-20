@@ -28,6 +28,83 @@
             box-sizing: border-box;
             margin-bottom: 20px;
         }
+		
+		.plate-container {
+			display: inline-flex;
+			align-items: center;
+			border: 4px solid black;
+			border-radius: 10px; 
+			background: #FFD700;
+			overflow: hidden;
+		}
+
+		/* הפס הכחול */
+		.blue-strip {
+			width: 70px;
+			height: 80px;
+			background: linear-gradient(#0038A8, #0050D0);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 3px;
+			color: white;
+			font-weight: bold;
+			font-size: 12px;
+			text-align: center;
+		}
+
+		/* דגל ישראל ב-CSS */
+		.flag {
+			width: 26px;
+			height: 18px;
+			background: white;
+			position: relative;
+			border: 1px solid white;
+		}
+
+		.flag::before,
+		.flag::after {
+			content: "";
+			position: absolute;
+			left: 0;
+			right: 0;
+			height: 2px;
+			background: #0038A8;
+		}
+
+		.flag::before {
+			top: 3px;
+		}
+
+		.flag::after {
+			bottom: 3px;
+		}
+
+		/* מגן דוד פשוט */
+		.flag span {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 10px;
+			color: #0038A8;
+		}
+
+		/* שדה המספר */
+		.plate-input {
+			width: 260px;
+			height: 80px;
+			border: none;
+			outline: none;
+			font-size: 32px;
+			text-align: center;
+			background: transparent;
+			font-weight: bold;
+			letter-spacing: 5px;
+		}
+		
         h1, h2 { color: #333; margin-bottom: 20px; font-size: 1.5em; }
         h2 { font-size: 1.2em; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; text-align: right; }
         
@@ -92,8 +169,28 @@
 
 <div class="container">
     <h1>סורק לוחית רישוי</h1>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas"></canvas>
+	<div class="plate-container">
+
+    <!-- פס כחול -->
+    <div class="blue-strip">
+        <div class="flag">
+            <span>✡</span>
+        </div>
+        <div>IL</div>
+        <div>ישראל</div>
+    </div>
+
+    <!-- מספר רכב -->
+    <input 
+        type="text" 
+        class="plate-input"
+        maxlength="10"
+        oninput="formatPlate(this)"
+        placeholder="00-000-00"
+		required
+    >
+
+</div>
     <button id="capture-btn">צלם וסרוק מספר</button>
     <div id="status">מפעיל מצלמה...</div>
 </div>
@@ -137,6 +234,31 @@
 </div>
 
 <script>
+
+	function formatPlate(input) {
+    let value = input.value.replace(/[^0-9]/g, '');
+
+    // הגבלת אורך
+    if (value.length > 8) {
+        value = value.slice(0, 8);
+    }
+
+    // עיצוב עם מקפים
+    if (value.length <= 7) {
+        // פורמט: 12-345-67
+        value = value.replace(/^(\d{0,2})(\d{0,3})(\d{0,2})$/, function(_, a, b, c) {
+            return [a, b, c].filter(Boolean).join('-');
+        });
+    } else {
+        // פורמט: 123-45-678
+        value = value.replace(/^(\d{0,3})(\d{0,2})(\d{0,3})$/, function(_, a, b, c) {
+            return [a, b, c].filter(Boolean).join('-');
+        });
+    }
+
+    input.value = value;
+}
+
     // הגדרות חיבור ל-Supabase
     const SUPABASE_URL = "https://mdnwgdbdmnozcsmxiupt.supabase.co";
     const SUPABASE_KEY = "sb_publishable_AxtO6kLoX9eHmzTIoBKD3w_ISvabvy3";
