@@ -145,9 +145,11 @@
 
     loader.style.display = 'block';
 
-    // שימוש ב-HTTPS מפורש
     const resourceId = '0537061d-882d-43e7-a1f9-9210f6525857';
-    const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${encodeURIComponent(inputVal)}`;
+    const targetUrl = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${encodeURIComponent(inputVal)}`;
+    
+    // שימוש בפרוקסי לעקיפת מנגנון CORS
+    const url = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
     try {
         const response = await fetch(url);
@@ -160,7 +162,6 @@
         loader.style.display = 'none';
 
         if (data.success && data.result && data.result.records.length > 0) {
-            // סינון מדויק לפי מספר הרכב
             const car = data.result.records.find(r => String(r.mispar_rechev) === inputVal) || data.result.records[0];
 
             document.getElementById('makeVal').innerText = car.tozeret_nm || 'לא מצוין';
@@ -175,7 +176,7 @@
     } catch (error) {
         loader.style.display = 'none';
         console.error('פירוט השגיאה:', error);
-        showError(`שגיאה בחיבור: ${error.message}. נסה להריץ דרך שרת מקומי (Live Server) או לבדוק את ה-Console.`);
+        showError('אירעה שגיאה בקבלת הנתונים. נסה שוב מאוחר יותר.');
     }
 }
 
