@@ -130,52 +130,54 @@
 
 <script>
     async function searchCar() {
-        const inputVal = document.getElementById('licenseInput').value.trim();
-        const resultsDiv = document.getElementById('results');
-        const errorDiv = document.getElementById('errorMessage');
-        const loader = document.getElementById('loader');
+    const inputVal = document.getElementById('licenseInput').value.trim();
+    const resultsDiv = document.getElementById('results');
+    const errorDiv = document.getElementById('errorMessage');
+    const loader = document.getElementById('loader');
 
-        // איפוס תצוגה
-        resultsDiv.style.display = 'none';
-        errorDiv.style.display = 'none';
-        
-        // בדיקת תקינות בסיסית
-        if (!inputVal) {
-            showError('נא להזין מספר רכב');
-            return;
-        }
-
-        loader.style.display = 'block';
-
-        // מזהה המאגר (Resource ID) של כלי רכב פעילים במאגר הממשלתי
-        const resourceId = '0537061d-882d-43e7-a1f9-9210f6525857';
-        const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${inputVal}`;
-
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-
-            loader.style.display = 'none';
-
-            if (data.success && data.result.records.length > 0) {
-                // מציאת הרכב המדויק לפי מספר רישוי (mispar_rechev)
-                const car = data.result.records.find(r => r.mispar_rechev == inputVal) || data.result.records[0];
-
-                document.getElementById('makeVal').innerText = car.tozeret_nm || 'לא מצוין';
-                document.getElementById('modelVal').innerText = car.kinuy_mishari || car.degem_nm || 'לא מצוין';
-                document.getElementById('yearVal').innerText = car.shnat_yitzur || 'לא מצוין';
-                document.getElementById('colorVal').innerText = car.tzeva_rechev || 'לא מצוין';
-
-                resultsDiv.style.display = 'block';
-            } else {
-                showError('רכב לא נמצא במאגר');
-            }
-        } catch (error) {
-            loader.style.display = 'none';
-            showError('אירעה שגיאה בחיבור ל-API');
-            console.error(error);
-        }
+    resultsDiv.style.display = 'none';
+    errorDiv.style.display = 'none';
+    
+    if (!inputVal) {
+        showError('נא להזין מספר רכב');
+        return;
     }
+
+    loader.style.display = 'block';
+
+    // שימוש ב-HTTPS מפורש
+    const resourceId = '0537061d-882d-43e7-a1f9-9210f6525857';
+    const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${encodeURIComponent(inputVal)}`;
+
+    try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`שגיאת שרת: ${response.status}`);
+        }
+
+        const data = await response.json();
+        loader.style.display = 'none';
+
+        if (data.success && data.result && data.result.records.length > 0) {
+            // סינון מדויק לפי מספר הרכב
+            const car = data.result.records.find(r => String(r.mispar_rechev) === inputVal) || data.result.records[0];
+
+            document.getElementById('makeVal').innerText = car.tozeret_nm || 'לא מצוין';
+            document.getElementById('modelVal').innerText = car.kinuy_mishari || car.degem_nm || 'לא מצוין';
+            document.getElementById('yearVal').innerText = car.shnat_yitzur || 'לא מצוין';
+            document.getElementById('colorVal').innerText = car.tzeva_rechev || 'לא מצוין';
+
+            resultsDiv.style.display = 'block';
+        } else {
+            showError('רכב לא נמצא במאגר');
+        }
+    } catch (error) {
+        loader.style.display = 'none';
+        console.error('פירוט השגיאה:', error);
+        showError(`שגיאה בחיבור: ${error.message}. נסה להריץ דרך שרת מקומי (Live Server) או לבדוק את ה-Console.`);
+    }
+}
 
     function showError(msg) {
         const errorDiv = document.getElementById('errorMessage');
