@@ -147,9 +147,11 @@
 
     const resourceId = '0537061d-882d-43e7-a1f9-9210f6525857';
     const targetUrl = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${encodeURIComponent(inputVal)}`;
-    
+    const proxyUrl = 'https://corsproxy.io/?';
+    const apiUrl = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${encodeURIComponent(inputVal)}`;
+        
     // שימוש בפרוקסי לעקיפת מנגנון CORS
-    const url = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+   const url = proxyUrl + encodeURIComponent(apiUrl);
 
     try {
         const response = await fetch(url);
