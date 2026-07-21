@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>איתור פרטי רכב</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 18px;
+            box-sizing: border-box;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .results {
+            margin-top: 25px;
+            text-align: right;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            display: none; /* מוסתר כברירת מחדל */
+        }
+
+        .result-item {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .result-item strong {
+            color: #555;
+        }
+
+        .error-message {
+            color: #d9534f;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .loader {
+            display: none;
+            margin: 15px auto 0;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>חיפוש פרטי רכב</h2>
+    
+    <div class="input-group">
+        <input type="text" id="licenseInput" placeholder="הכנס מספר רכב (למשל: 12345678)" maxlength="8">
+    </div>
+    
+    <button onclick="searchCar()">חפש רכב</button>
+    <div id="loader" class="loader"></div>
+
+    <div id="errorMessage" class="error-message"></div>
+
+    <div id="results" class="results">
+        <div class="result-item"><strong>יצרן:</strong> <span id="makeVal">-</span></div>
+        <div class="result-item"><strong>דגם:</strong> <span id="modelVal">-</span></div>
+        <div class="result-item"><strong>שנת ייצור:</strong> <span id="yearVal">-</span></div>
+        <div class="result-item"><strong>צבע:</strong> <span id="colorVal">-</span></div>
+    </div>
+</div>
+
+<script>
+    async function searchCar() {
+        const inputVal = document.getElementById('licenseInput').value.trim();
+        const resultsDiv = document.getElementById('results');
+        const errorDiv = document.getElementById('errorMessage');
+        const loader = document.getElementById('loader');
+
+        // איפוס תצוגה
+        resultsDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+        
+        // בדיקת תקינות בסיסית
+        if (!inputVal) {
+            showError('נא להזין מספר רכב');
+            return;
+        }
+
+        loader.style.display = 'block';
+
+        // מזהה המאגר (Resource ID) של כלי רכב פעילים במאגר הממשלתי
+        const resourceId = '0537061d-882d-43e7-a1f9-9210f6525857';
+        const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${resourceId}&q=${inputVal}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            loader.style.display = 'none';
+
+            if (data.success && data.result.records.length > 0) {
+                // מציאת הרכב המדויק לפי מספר רישוי (mispar_rechev)
+                const car = data.result.records.find(r => r.mispar_rechev == inputVal) || data.result.records[0];
+
+                document.getElementById('makeVal').innerText = car.tozeret_nm || 'לא מצוין';
+                document.getElementById('modelVal').innerText = car.kinuy_mishari || car.degem_nm || 'לא מצוין';
+                document.getElementById('yearVal').innerText = car.shnat_yitzur || 'לא מצוין';
+                document.getElementById('colorVal').innerText = car.tzeva_rechev || 'לא מצוין';
+
+                resultsDiv.style.display = 'block';
+            } else {
+                showError('רכב לא נמצא במאגר');
+            }
+        } catch (error) {
+            loader.style.display = 'none';
+            showError('אירעה שגיאה בחיבור ל-API');
+            console.error(error);
+        }
+    }
+
+    function showError(msg) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.innerText = msg;
+        errorDiv.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
